@@ -1,0 +1,9 @@
+POST http://localhost:8000/api/register
+Content-Type: 'application/json'
+
+{
+    "name": "Carlos",
+    "email": "carlos@dominio.com",
+    "password": "senha123",
+    "password_confirmation": "senha123"
+}
