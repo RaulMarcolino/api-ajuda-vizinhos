@@ -1,78 +1,50 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use App\Models\User;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    // Registro de novo usuário
     public function register(Request $request)
     {
-        // Validação dos dados de entrada
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'email' => 'required|string|email|unique:users',
+            'password' => 'required|string|min:6',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
-        }
-
-        // Criando o novo usuário
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        // Gerando o token de acesso para o usuário
-        $token = $user->createToken('AjudaVizinhoApp')->plainTextToken;
-
-        return response()->json([
-            'user' => $user,
-            'token' => $token,
-        ], 201);
+        return response()->json(['user' => $user], 201);
     }
 
-    // Login do usuário
     public function login(Request $request)
     {
-        // Validação dos dados de entrada
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
-            'password' => 'required|string|min:8',
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
-        }
-
-        // Verificando se o usuário existe
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Credenciais inválidas'], 401);
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['As credenciais estão incorretas.'],
+            ]);
         }
 
-        // Gerando o token de acesso para o usuário
-        $token = $user->createToken('AjudaVizinhoApp')->plainTextToken;
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
-            'token' => $token,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
         ]);
-    }
-
-    // Logout do usuário (revogando o token)
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json(['message' => 'Desconectado com sucesso']);
     }
 }
